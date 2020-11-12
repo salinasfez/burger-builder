@@ -18,7 +18,12 @@ class ContactData extends Component{
                         type: 'text',
                         placeholder: 'Your Name'
                     },
-                    value: ''
+                    value: '',
+                    validation: {
+                        required: true
+                    },
+                    valid: false,
+                    touched: false
                 },
                 street: {
                     elementType: 'input',
@@ -26,7 +31,12 @@ class ContactData extends Component{
                         type: 'text',
                         placeholder: 'Street'
                     },
-                    value: ''
+                    value: '',
+                    validation: {
+                        required: true
+                    },
+                    valid: false,
+                    touched: false
                 },
                 zipCode: {
                     elementType: 'input',
@@ -34,7 +44,14 @@ class ContactData extends Component{
                         type: 'text',
                         placeholder: 'Zip Code'
                     },
-                    value: ''
+                    value: '',
+                    validation: {
+                        required: true,
+                        minLength: 5,
+                        maxLength: 5
+                    },
+                    valid: false,
+                    touched: false
                 },
                 country: {
                     elementType: 'input',
@@ -42,15 +59,25 @@ class ContactData extends Component{
                         type: 'text',
                         placeholder: 'Country'
                     },
-                    value: ''
+                    value: '',
+                    validation: {
+                        required: true
+                    },
+                    valid: false,
+                    touched: false
                 },
                 email: {
-                    elementType: 'email',
+                    elementType: 'input',
                     elementConfig: {
                         type: 'text',
                         placeholder: 'Your Email'
                     },
-                    value: ''
+                    value: '',
+                    validation: {
+                        required: true
+                    },
+                    valid: false,
+                    touched: false
                 },
                 deliveryMethod: {
                     elementType: 'select',
@@ -60,9 +87,12 @@ class ContactData extends Component{
                             {value: 'cheapest', displayValue: 'Cheapest'}
                             ]
                     },
-                    value: ''
+                    value: '',
+                    validation: {},
+                    valid: true
                 }
         },
+        formIsValid: false,
         loading: false
     }
     orderHandler = (event) => {
@@ -70,10 +100,18 @@ class ContactData extends Component{
            this.setState({
             loading: true
         })
+        //get data from state
+        const formData = {};
+        //formElementIdentier is name, country..etc
+        for (let formElementIdentifier in this.state.orderForm){
+            //this.state.orderForm[formElementIdentifier].value is the value the user entered accessed from the state value: ''
+            formData[formElementIdentifier] = this.state.orderForm[formElementIdentifier].value;
+        }
         // alert('You continue!');
         const order = {
             ingredients: this.props.ingredients,
             price: this.props.price,
+            orderData: formData
             
         }
         axios.post('/orders.json', order)
@@ -89,6 +127,50 @@ class ContactData extends Component{
             });
         });
     }
+    checkVadility (value, rules) {
+
+        let isValid = true;
+
+        // if(!rules){ option 2 for the dropdown menu
+        //     return true;
+        // }
+
+        if (rules.required){
+            isValid = value.trim() !=='' && isValid;
+        }
+        if (rules.minLength){
+            isValid = value.length >= rules.minLength && isValid;
+        }
+        if (rules.maxLength){
+            isValid = value.length <= rules.maxLength && isValid;
+        }
+        return isValid;
+    }
+    
+    inputChangedHandler = (event, inputIdentifier) => {
+        // console.log(event.target.value);
+        const updatedOrderForm = {
+            ...this.state.orderForm
+        }
+        //email..delivery method
+        const updatedFormElement = {
+            ...updatedOrderForm[inputIdentifier]
+    };
+    updatedFormElement.value = event.target.value;
+    updatedFormElement.valid = this.checkVadility(updatedFormElement.value, updatedFormElement.validation);
+    updatedFormElement.touched = true;
+    updatedOrderForm[inputIdentifier] = updatedFormElement;
+    let formIsValid = true;
+    //looking through all the elements
+    for (let inputIdentifier in updatedOrderForm){
+        formIsValid = updatedOrderForm[inputIdentifier].valid && formIsValid;
+    }
+    this.setState({
+        orderForm: updatedOrderForm,
+        formIsValid: formIsValid
+    })
+}
+
     render(){
         const formElementsArray = [];
         for (let key in this.state.orderForm){
@@ -99,16 +181,20 @@ class ContactData extends Component{
             });
         }
         let form = (
-            <form>
+            <form onSubmit={this.orderHandler}>
                     {formElementsArray.map(formElement => (
                         <Input 
                                 key={formElement.id}
                                 elementType={formElement.config.elementType}
                                 elementConfig={formElement.config.elementConfig}
                                 value={formElement.config.value}
+                                changed={(event) => this.inputChangedHandler(event, formElement.id)}
+                                invalid={!formElement.config.valid}
+                                touched={formElement.config.touched}
+                                shouldValidate={formElement.config.validation}
                         />
                     ))}
-                    <Button btnType='Success' clicked={this.orderHandler}>ORDER</Button>
+                    <Button btnType='Success' clicked={this.orderHandler} disabled={!this.state.formIsValid}>ORDER</Button>
             </form>
         );
         if (this.state.loading) {
